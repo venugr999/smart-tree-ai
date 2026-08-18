@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Tree AI</title>
+  <style>
+    :root{font-family:Inter,system-ui,sans-serif;color:#16351f;background:#f3f8f4}body{max-width:760px;margin:0 auto;padding:40px 20px}.card{background:#fff;border:1px solid #dce9df;border-radius:16px;padding:28px;box-shadow:0 10px 30px rgba(22,53,31,.06)}h1{margin-top:0}p{color:#587062}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}input,button{width:100%;padding:12px;border-radius:9px;border:1px solid #cddbd1;box-sizing:border-box}button{background:#246b39;color:white;border:0;font-weight:700;cursor:pointer;margin-top:12px}.result{margin-top:20px;padding:16px;background:#f1f7f2;border-radius:10px}.hidden{display:none}@media(max-width:600px){.row{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🌳 Smart Tree AI</h1>
+    <p>Identify a tree from an image and estimate age, biomass and CO₂ sequestration from tree measurements.</p>
+    <label>Tree image</label>
+    <input id="image" type="file" accept="image/*">
+    <button onclick="identifyTree()">Identify tree</button>
+    <div id="identified" class="result hidden"></div>
+    <div id="form" class="hidden">
+      <h3>Tree measurements</h3>
+      <div class="row">
+        <input id="diameter" type="number" min="0" step="0.1" placeholder="Diameter (cm)">
+        <input id="height" type="number" min="0" step="0.1" placeholder="Height (m)">
+      </div>
+      <input id="canopy" type="number" min="0" step="0.1" placeholder="Canopy radius (m)" style="margin-top:12px">
+      <button onclick="estimate()">Estimate age & CO₂</button>
+    </div>
+    <div id="output" class="result hidden"></div>
+  </div>
+<script>
+let tree = {};
+async function identifyTree(){
+  const file=document.getElementById('image').files[0];
+  const out=document.getElementById('identified');
+  if(!file){out.textContent='Please select an image.';out.classList.remove('hidden');return;}
+  out.textContent='Identifying…';out.classList.remove('hidden');
+  const fd=new FormData();fd.append('file',file);
+  const r=await fetch('/identify',{method:'POST',body:fd});const d=await r.json();
+  if(!r.ok){out.textContent=d.error||'Identification failed.';return;}
+  tree=d;out.innerHTML=`<b>${d.species}</b><br>Family: ${d.family}<br>Genus: ${d.genus}<br>Confidence: ${d.confidence}%`;
+  document.getElementById('form').classList.remove('hidden');
+}
+async function estimate(){
+  const payload={...tree,diameter_cm:document.getElementById('diameter').value,height_m:document.getElementById('height').value,canopy_radius_m:document.getElementById('canopy').value};
+  const r=await fetch('/estimate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();
+  const out=document.getElementById('output');out.classList.remove('hidden');
+  if(!r.ok){out.textContent=d.error||'Estimation failed.';return;}
+  out.innerHTML=`<b>Estimated age:</b> ${d.estimated_age_years} years<br><b>Above-ground biomass:</b> ${d.agb_kg} kg<br><b>CO₂/year:</b> ${d.co2_kg_per_year} kg<br><b>CO₂/month:</b> ${d.co2_kg_per_month} kg`;
+}
+</script>
+</body></html>
