@@ -13,14 +13,16 @@ from .estimator import estimate_tree_age_and_co2
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-DATA_DIR = BASE_DIR / "data"
-UPLOAD_DIR = BASE_DIR / "uploads"
+# Vercel's deployment filesystem is read-only except for /tmp.
+RUNTIME_DIR = Path("/tmp/smart-tree-ai") if os.getenv("VERCEL") else BASE_DIR
+DATA_DIR = RUNTIME_DIR / "data"
+UPLOAD_DIR = RUNTIME_DIR / "uploads"
 PREDICTIONS_FILE = DATA_DIR / "predictions.csv"
 
-DATA_DIR.mkdir(exist_ok=True)
-UPLOAD_DIR.mkdir(exist_ok=True)
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=str(BASE_DIR / "app" / "templates"))
 CORS(app)
 
 PLANTNET_API_KEY = os.getenv("PLANTNET_API_KEY")
@@ -112,12 +114,16 @@ def estimate():
         "canopy_radius_m": canopy,
     }
 
-    pd.DataFrame([record]).to_csv(
-        PREDICTIONS_FILE,
-        mode="a",
-        header=not PREDICTIONS_FILE.exists(),
-        index=False,
-    )
+    try:
+        pd.DataFrame([record]).to_csv(
+            PREDICTIONS_FILE,
+            mode="a",
+            header=not PREDICTIONS_FILE.exists(),
+            index=False,
+        )
+    except OSError:
+        # Persistence is intentionally best-effort on serverless storage.
+        pass
 
     return jsonify(record)
 
