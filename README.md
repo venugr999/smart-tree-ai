@@ -63,6 +63,10 @@ python -m app.main
 
 Open `http://127.0.0.1:5000`.
 
+## Deployment
+
+The Flask application is configured for deployment on Vercel using the Python runtime and `api/index.py` entry point.
+
 ## Repository safety
 
 The original project contained a hard-coded API credential and local runtime files. This public version removes credentials from source code and excludes runtime uploads, virtual environments, caches and prediction logs from Git.
